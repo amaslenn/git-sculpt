@@ -52,12 +52,42 @@ func getMergeBase(c1 string, c2 string) (merge_base string, err error) {
         return merge_base, err
     }
 
-    merge_base = strings.SplitN(out.String(), "\n", 1)[0]
+    merge_base = strings.Trim(strings.SplitN(out.String(), "\n", 1)[0], " \n")
     if merge_base == "" {
         return "", errors.New("Cannot define merge_base")
     }
 
     return merge_base, err
+}
+
+func getPatchIds(c1 string, c2 string) (patchIds map[string]string, err error) {
+    cmd := exec.Command("git", "log", "--format='%H'", c1 + ".." + c2)
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    cmd.Stderr = &out
+
+    err = cmd.Run()
+    if err != nil {
+        return patchIds, err
+    }
+
+    if out.String() == "" {
+        return patchIds, err
+    }
+
+    commits := strings.Split(out.String(), "\n")
+    for _, commit := range commits {
+        cmd = exec.Command("git", "show", commit , "|", "git", "patch-id", "--stable")
+        locErr := cmd.Run()
+        if locErr != nil {
+            return patchIds, locErr
+        }
+        tmp := strings.Split(out.String(), " ")
+        fmt.Println(tmp)
+        patchIds[tmp[1]] = tmp[0]
+    }
+
+    return patchIds, err
 }
 
 func main() {
@@ -81,6 +111,18 @@ func main() {
                 fmt.Println("ERROR:", err)
                 os.Exit(1)
             }
+            localPatchIds, err := getPatchIds(merge_base, localBranch)
+            if err != nil {
+                fmt.Println("ERROR:", err)
+                os.Exit(1)
+            }
+            if len(localPatchIds) == 0 {
+                fmt.Println("[" + localBranch + "] is safe to remove")
+                break
+            }
+            // walk through merge_base..localBranch, calc {patch-id-sha: commit-sha}
+            // walk through merge_base..baseCommit, calc {patch-id-sha: commit-sha}
+            //  and compare with values for branch
             break
         }
     }
