@@ -118,7 +118,7 @@ func getPatchIds(commits []string) (patchId map[string]string, err error) {
 		if err != nil {
 			return patchId, err
 		}
-		patchId[commit] = pId
+		patchId[pId] = commit
 	}
 
 	return patchId, err
@@ -161,7 +161,6 @@ func main() {
 
 			found := 0
 			for _, commit := range commits {
-				fmt.Println(">", commit)
 				pId, err := getPatchId(commit)
 				if err != nil {
 					fmt.Println("ERROR:", err)
