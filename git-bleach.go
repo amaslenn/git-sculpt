@@ -7,6 +7,7 @@ import "bytes"
 import "strings"
 import "os"
 import "errors"
+import "io"
 
 var dryRun bool
 var baseCommit string
@@ -60,34 +61,65 @@ func getMergeBase(c1 string, c2 string) (merge_base string, err error) {
     return merge_base, err
 }
 
-func getPatchIds(c1 string, c2 string) (patchIds map[string]string, err error) {
-    cmd := exec.Command("git", "log", "--format='%H'", c1 + ".." + c2)
+func getCommits(c1 string, c2 string) (commits []string) {
+    cmd := exec.Command("git", "log", "--format=%H", c1 + ".." + c2)
     var out bytes.Buffer
     cmd.Stdout = &out
-    cmd.Stderr = &out
 
-    err = cmd.Run()
+    err := cmd.Run()
     if err != nil {
-        return patchIds, err
+        return commits
     }
 
     if out.String() == "" {
-        return patchIds, err
+        return commits
     }
 
-    commits := strings.Split(out.String(), "\n")
-    for _, commit := range commits {
-        cmd = exec.Command("git", "show", commit , "|", "git", "patch-id", "--stable")
-        locErr := cmd.Run()
-        if locErr != nil {
-            return patchIds, locErr
+    for _, commit := range strings.Split(out.String(), "\n") {
+        commit = strings.Trim(commit, "\n")
+        if commit != "" {
+            commits = append(commits, commit)
         }
-        tmp := strings.Split(out.String(), " ")
-        fmt.Println(tmp)
-        patchIds[tmp[1]] = tmp[0]
     }
 
-    return patchIds, err
+    return commits
+}
+
+func getPatchId(commit string) (patchId string, err error) {
+    cmd_show := exec.Command("git", "show", commit)
+    cmd_patch_id := exec.Command("git", "patch-id", "--stable")
+
+    var out bytes.Buffer
+    reader, writer := io.Pipe()
+    cmd_show.Stdout = writer
+    cmd_patch_id.Stdin = reader
+    cmd_patch_id.Stdout = &out
+
+    cmd_show.Start()
+    cmd_patch_id.Start()
+    cmd_show.Wait()
+    writer.Close()
+    err = cmd_patch_id.Wait()
+
+    if err != nil {
+        return patchId, err
+    }
+
+    patchId = strings.Split(out.String(), " ")[0]
+
+    return patchId, err
+}
+
+func getPatchIds(commits []string) (patchId map[string]string, err error) {
+    for _, commit := range commits {
+        pId, err := getPatchId(commit)
+        if err != nil {
+            return patchId, err
+        }
+        patchId[commit] = pId
+    }
+
+    return patchId, err
 }
 
 func main() {
@@ -104,6 +136,7 @@ func main() {
     }
 
     var merge_base string
+    safeToRemove := false
     for _, b := range branches {
         if b == localBranch {
             merge_base, err = getMergeBase(baseCommit, localBranch)
@@ -111,17 +144,38 @@ func main() {
                 fmt.Println("ERROR:", err)
                 os.Exit(1)
             }
-            localPatchIds, err := getPatchIds(merge_base, localBranch)
+            // walk through merge_base..localBranch, calc {patch-id-sha: commit-sha}
+            localPatchIds, err := getPatchIds(getCommits(merge_base, localBranch))
             if err != nil {
                 fmt.Println("ERROR:", err)
                 os.Exit(1)
             }
             if len(localPatchIds) == 0 {
-                fmt.Println("[" + localBranch + "] is safe to remove")
-                break
+                safeToRemove = true
+                // break
             }
-            // walk through merge_base..localBranch, calc {patch-id-sha: commit-sha}
+
             // walk through merge_base..baseCommit, calc {patch-id-sha: commit-sha}
+            commits := getCommits(merge_base, baseCommit)
+
+            found := 0
+            for _, commit := range commits {
+                fmt.Println(">", commit)
+                pId, err := getPatchId(commit)
+                if err != nil {
+                    fmt.Println("ERROR:", err)
+                    os.Exit(1)
+                }
+
+                if _, ok := localPatchIds[pId]; ok {
+                    found++
+                }
+
+                if found == len(localPatchIds) {
+                    safeToRemove = true
+                    break
+                }
+            }
             //  and compare with values for branch
             break
         }
@@ -132,4 +186,9 @@ func main() {
     fmt.Println("Local branch:", localBranch)
     fmt.Println("Local branches:", branches)
     fmt.Println("Merge base:", merge_base)
+    if safeToRemove {
+        fmt.Println("[" + localBranch + "] is safe to remove")
+    } else {
+        fmt.Println("[" + localBranch + "] is not in base")
+    }
 }
