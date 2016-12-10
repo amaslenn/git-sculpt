@@ -111,6 +111,8 @@ func getPatchId(commit string) (patchId string, err error) {
 }
 
 func getPatchIds(commits []string) (patchId map[string]string, err error) {
+	patchId = make(map[string]string, len(commits))
+
 	for _, commit := range commits {
 		pId, err := getPatchId(commit)
 		if err != nil {
