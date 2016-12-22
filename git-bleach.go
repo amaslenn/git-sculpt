@@ -160,7 +160,10 @@ func main() {
 			commits := getCommits(mergeBase, baseCommit)
 
 			found := 0
-			for _, commit := range commits {
+			// walk from merge-base to HEAD, usually old branches are faster to
+			// find this way
+			for i := len(commits) - 1; i >= 0; i-- {
+				commit := commits[i]
 				pId, err := getPatchId(commit)
 				if err != nil {
 					fmt.Println("ERROR:", err)
@@ -180,10 +183,10 @@ func main() {
 		}
 	}
 
-	fmt.Println("Dry run:", dryRun)
+	//fmt.Println("Dry run:", dryRun)
 	fmt.Println("Base commit:", baseCommit)
 	fmt.Println("Local branch:", localBranch)
-	fmt.Println("Local branches:", branches)
+	//fmt.Println("Local branches:", branches)
 	fmt.Println("Merge base:", mergeBase)
 	if safeToRemove {
 		fmt.Println("[" + localBranch + "] is safe to remove")
