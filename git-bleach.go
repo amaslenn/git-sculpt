@@ -5,17 +5,17 @@ import "flag"
 import "os/exec"
 import "bytes"
 import "strings"
-import "os"
 import "errors"
 import "io"
+import "log"
 
-var dryRun bool
 var baseCommit string
 var localBranch string
+var remove bool
 
 func init() {
-	flag.BoolVar(&dryRun, "x", true, "dry run")
 	flag.StringVar(&baseCommit, "base", "master", "Base branch or commit")
+	flag.BoolVar(&remove, "d", false, "Remove branch if it is safe")
 }
 
 // funtion returns all local branches which do not have upstream
@@ -124,6 +124,13 @@ func getPatchIds(commits []string) (patchId map[string]string, err error) {
 	return patchId, err
 }
 
+func removeBranch(branch string) (err error) {
+	cmd := exec.Command("git", "branch", "-D", branch)
+
+	err = cmd.Run()
+	return err
+}
+
 func main() {
 	flag.Parse()
 	var argsTail = flag.Args()
@@ -133,24 +140,23 @@ func main() {
 
 	branches, err := getLocalBranches()
 	if err != nil {
-		fmt.Println("ERROR:", err)
-		os.Exit(1)
+		log.Fatalln("ERROR:", err)
 	}
 
 	var mergeBase string
+	branchExists := false
 	safeToRemove := false
 	for _, b := range branches {
 		if b == localBranch {
+			branchExists = true
 			mergeBase, err = getMergeBase(baseCommit, localBranch)
 			if err != nil {
-				fmt.Println("ERROR:", err)
-				os.Exit(1)
+				log.Fatalln("ERROR:", err)
 			}
 
 			localPatchIds, err := getPatchIds(getCommits(mergeBase, localBranch))
 			if err != nil {
-				fmt.Println("ERROR:", err)
-				os.Exit(1)
+				log.Fatalln("ERROR:", err)
 			}
 			if len(localPatchIds) == 0 {
 				safeToRemove = true
@@ -166,8 +172,7 @@ func main() {
 				commit := commits[i]
 				pId, err := getPatchId(commit)
 				if err != nil {
-					fmt.Println("ERROR:", err)
-					os.Exit(1)
+					log.Fatalln("ERROR:", err)
 				}
 
 				if _, ok := localPatchIds[pId]; ok {
@@ -183,14 +188,22 @@ func main() {
 		}
 	}
 
-	//fmt.Println("Dry run:", dryRun)
-	fmt.Println("Base commit:", baseCommit)
-	fmt.Println("Local branch:", localBranch)
-	//fmt.Println("Local branches:", branches)
-	fmt.Println("Merge base:", mergeBase)
+	if !branchExists {
+		log.Fatal("ERROR: branch doesn't exist")
+	}
+
 	if safeToRemove {
 		fmt.Println("[" + localBranch + "] is safe to remove")
 	} else {
 		fmt.Println("[" + localBranch + "] is not in base")
+	}
+
+	if safeToRemove && remove {
+		err = removeBranch(localBranch)
+		if err != nil {
+			log.Fatalln("ERROR:", err)
+		} else {
+			fmt.Println("[" + localBranch + "] removed")
+		}
 	}
 }
