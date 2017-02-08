@@ -17,6 +17,12 @@ Check if branch `feature3` in **master** and delete if it is safe:
 git sculpt -d feature3
 ```
 
+## Build
+The following command will trigger cross platform build for `amd64` for macOS, Linux and Windows.
+```sh
+make
+```
+
 ## Install
 Simply copy pre-build versions (or compile by yourself) to your `$PATH`. `git` will automatically use it for `git sculpt`.
 
