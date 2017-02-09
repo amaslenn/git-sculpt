@@ -131,6 +131,39 @@ func removeBranch(branch string) (err error) {
 	return err
 }
 
+func integrated(branch string, baseCommit string) (safeToRemove bool, err error) {
+	mergeBase, err := getMergeBase(baseCommit, branch)
+	if err != nil {
+		return false, err
+	}
+
+	localPatchIds, err := getPatchIds(getCommits(mergeBase, branch))
+	if err != nil {
+		return false, err
+	}
+	if len(localPatchIds) == 0 {
+		return true, nil
+	}
+
+	commits := getCommits(mergeBase, baseCommit)
+
+	// walk from merge-base to HEAD, usually old branches are faster to
+	// find this way
+	for i := len(commits) - 1; i >= 0; i-- {
+		commit := commits[i]
+		pId, err := getPatchId(commit)
+		if err != nil {
+			return false, err
+		}
+
+		if _, ok := localPatchIds[pId]; ok {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 func main() {
 	flag.Parse()
 	var argsTail = flag.Args()
@@ -143,48 +176,15 @@ func main() {
 		log.Fatalln("ERROR:", err)
 	}
 
-	var mergeBase string
 	branchExists := false
 	safeToRemove := false
 	for _, b := range branches {
 		if b == localBranch {
 			branchExists = true
-			mergeBase, err = getMergeBase(baseCommit, localBranch)
+			safeToRemove, err = integrated(localBranch, baseCommit)
 			if err != nil {
 				log.Fatalln("ERROR:", err)
 			}
-
-			localPatchIds, err := getPatchIds(getCommits(mergeBase, localBranch))
-			if err != nil {
-				log.Fatalln("ERROR:", err)
-			}
-			if len(localPatchIds) == 0 {
-				safeToRemove = true
-				break
-			}
-
-			commits := getCommits(mergeBase, baseCommit)
-
-			found := 0
-			// walk from merge-base to HEAD, usually old branches are faster to
-			// find this way
-			for i := len(commits) - 1; i >= 0; i-- {
-				commit := commits[i]
-				pId, err := getPatchId(commit)
-				if err != nil {
-					log.Fatalln("ERROR:", err)
-				}
-
-				if _, ok := localPatchIds[pId]; ok {
-					found++
-				}
-
-				if found == len(localPatchIds) {
-					safeToRemove = true
-					break
-				}
-			}
-			break
 		}
 	}
 
