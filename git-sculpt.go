@@ -198,12 +198,14 @@ func main() {
 		fmt.Println("[" + localBranch + "] is not in base")
 	}
 
-	if safeToRemove && remove {
-		err = removeBranch(localBranch)
-		if err != nil {
-			log.Fatalln("ERROR:", err)
+	if remove {
+		if safeToRemove {
+			err = removeBranch(localBranch)
+			if err != nil {
+				log.Fatalln("ERROR:", err)
+			}
 		} else {
-			fmt.Println("[" + localBranch + "] removed")
+			log.Fatalln("ERROR: branch '" + localBranch + "' is not safe to remove")
 		}
 	}
 }
