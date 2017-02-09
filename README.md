@@ -1,3 +1,5 @@
+[![Travis CI](https://travis-ci.org/amaslenn/git-sculpt.svg)](https://travis-ci.org/amaslenn/git-sculpt/builds)
+
 # git-sculpt
 Tool for removing merged local branches. Extremely useful in case when changes are incorporated into mainline by `rebase`.
 
