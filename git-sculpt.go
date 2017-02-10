@@ -7,22 +7,34 @@ import "bytes"
 import "strings"
 import "errors"
 import "io"
+import "os"
 import "log"
 
 var baseCommit string
 var localBranch string
 var remove bool
+var interactive_mode bool
 
 func init() {
 	flag.StringVar(&baseCommit, "base", "master", "Base branch or commit")
 	flag.BoolVar(&remove, "d", false, "Remove branch if it is safe")
+	flag.BoolVar(&interactive_mode, "i", false, "Travers all local branch interactively")
 }
 
 // funtion returns all local branches which do not have upstream
 func getLocalBranches() (branches []string, err error) {
-	// this super easy format was choosen to exclude any unexpected symbols in output
-	cmd := exec.Command("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/")
+	cmd := exec.Command("git", "symbolic-ref", "-q", "--short", "HEAD")
 	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	curr_branch := ""
+	err = cmd.Run()
+	if err == nil {
+		curr_branch = strings.Split(out.String(), "\n")[0]
+	}
+
+	// this super easy format was choosen to exclude any unexpected symbols in output
+	cmd = exec.Command("git", "for-each-ref", "--format=%(refname:short)", "refs/heads/")
 	cmd.Stdout = &out
 
 	err = cmd.Run()
@@ -33,6 +45,9 @@ func getLocalBranches() (branches []string, err error) {
 	all_branches := strings.Split(out.String(), "\n")
 
 	for i := 0; i < len(all_branches); i++ {
+		if curr_branch == all_branches[i] || 0 == len(all_branches[i]) {
+			continue
+		}
 		cmd = exec.Command("git", "rev-parse", "--symbolic-full-name", all_branches[i]+"@{u}")
 		loc_err := cmd.Run()
 		if loc_err != nil { // means there is no upstream branch
@@ -165,6 +180,8 @@ func integrated(branch string, baseCommit string) (safeToRemove bool, err error)
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	flag.Parse()
 	var argsTail = flag.Args()
 	if len(argsTail) > 0 {
@@ -179,13 +196,36 @@ func main() {
 	branchExists := false
 	safeToRemove := false
 	for _, b := range branches {
-		if b == localBranch {
+		if interactive_mode {
+			safeToRemove, err = integrated(b, baseCommit)
+			if err != nil {
+				log.Fatalln("ERROR:", err)
+			}
+			if safeToRemove {
+				fmt.Print("[" + b + "] is safe to remove. Remove? [Y/n] ")
+				var input string
+				fmt.Scanln(&input)
+				if input == "Y" || input == "y" {
+					err = removeBranch(b)
+					if err != nil {
+						log.Fatalln("ERROR:", err)
+					}
+					fmt.Println("[" + b + "] removed")
+				}
+			} else {
+				fmt.Println("[" + b + "] is not safe to remove, skip it")
+			}
+		} else if b == localBranch {
 			branchExists = true
 			safeToRemove, err = integrated(localBranch, baseCommit)
 			if err != nil {
 				log.Fatalln("ERROR:", err)
 			}
 		}
+	}
+
+	if interactive_mode {
+		os.Exit(0)
 	}
 
 	if !branchExists {
