@@ -11,7 +11,6 @@ import "os"
 import "log"
 
 var baseCommit string
-var localBranch string
 var remove bool
 var interactive_mode bool
 
@@ -184,18 +183,19 @@ func main() {
 
 	flag.Parse()
 	var argsTail = flag.Args()
+	var brachToRemove string
 	if len(argsTail) > 0 {
-		localBranch = argsTail[0]
+		brachToRemove = argsTail[0]
 	}
 
-	branches, err := getLocalBranches()
+	localBranches, err := getLocalBranches()
 	if err != nil {
 		log.Fatalln("ERROR:", err)
 	}
 
 	branchExists := false
 	safeToRemove := false
-	for _, b := range branches {
+	for _, b := range localBranches {
 		if interactive_mode {
 			safeToRemove, err = integrated(b, baseCommit)
 			if err != nil {
@@ -215,9 +215,9 @@ func main() {
 			} else {
 				fmt.Println("[" + b + "] is not safe to remove, skip it")
 			}
-		} else if b == localBranch {
+		} else if b == brachToRemove {
 			branchExists = true
-			safeToRemove, err = integrated(localBranch, baseCommit)
+			safeToRemove, err = integrated(brachToRemove, baseCommit)
 			if err != nil {
 				log.Fatalln("ERROR:", err)
 			}
@@ -233,19 +233,19 @@ func main() {
 	}
 
 	if safeToRemove {
-		fmt.Println("[" + localBranch + "] is safe to remove")
+		fmt.Println("[" + brachToRemove + "] is safe to remove")
 	} else {
-		fmt.Println("[" + localBranch + "] is not in base")
+		fmt.Println("[" + brachToRemove + "] is not in base")
 	}
 
 	if remove {
 		if safeToRemove {
-			err = removeBranch(localBranch)
+			err = removeBranch(brachToRemove)
 			if err != nil {
 				log.Fatalln("ERROR:", err)
 			}
 		} else {
-			log.Fatalln("ERROR: branch '" + localBranch + "' is not safe to remove")
+			log.Fatalln("ERROR: branch '" + brachToRemove + "' is not safe to remove")
 		}
 	}
 }
