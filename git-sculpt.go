@@ -64,7 +64,7 @@ func getMergeBase(c1 string, c2 string) (merge_base string, err error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return merge_base, err
+		return merge_base, errors.New("error getting merge-base")
 	}
 
 	merge_base = strings.Trim(strings.SplitN(out.String(), "\n", 1)[0], " \n")
@@ -178,14 +178,51 @@ func integrated(branch string, baseCommit string) (safeToRemove bool, err error)
 	return false, nil
 }
 
+func removeSingleBranch(branch string, base string) (err error) {
+	safeToRemove, err := integrated(branch, base)
+	if err != nil {
+		return err
+	}
+
+	if safeToRemove {
+		fmt.Println("[" + branch + "] is safe to remove")
+	} else {
+		fmt.Println("[" + branch + "] is not in base")
+	}
+
+	if remove {
+		if safeToRemove {
+			err = removeBranch(branch)
+			if err != nil {
+				return err
+			}
+		} else {
+			return errors.New("ERROR: branch '" + branch + "' is not safe to remove")
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	flag.Parse()
 	var argsTail = flag.Args()
-	var brachToRemove string
+	var branchToRemove string
 	if len(argsTail) > 0 {
-		brachToRemove = argsTail[0]
+		branchToRemove = argsTail[0]
+	}
+
+	if !interactive_mode && branchToRemove != "" {
+		err := removeSingleBranch(branchToRemove, baseCommit)
+		if err != nil {
+			log.Fatalln("ERROR:", err)
+		}
+		os.Exit(0);
+	} else if !interactive_mode {
+		fmt.Println("Nothing to do")
+		os.Exit(0)
 	}
 
 	localBranches, err := getLocalBranches()
@@ -193,7 +230,6 @@ func main() {
 		log.Fatalln("ERROR:", err)
 	}
 
-	branchExists := false
 	safeToRemove := false
 	for _, b := range localBranches {
 		if interactive_mode {
@@ -215,37 +251,7 @@ func main() {
 			} else {
 				fmt.Println("[" + b + "] is not safe to remove, skip it")
 			}
-		} else if b == brachToRemove {
-			branchExists = true
-			safeToRemove, err = integrated(brachToRemove, baseCommit)
-			if err != nil {
-				log.Fatalln("ERROR:", err)
-			}
-		}
-	}
-
-	if interactive_mode {
-		os.Exit(0)
-	}
-
-	if !branchExists {
-		log.Fatal("ERROR: branch doesn't exist")
-	}
-
-	if safeToRemove {
-		fmt.Println("[" + brachToRemove + "] is safe to remove")
-	} else {
-		fmt.Println("[" + brachToRemove + "] is not in base")
-	}
-
-	if remove {
-		if safeToRemove {
-			err = removeBranch(brachToRemove)
-			if err != nil {
-				log.Fatalln("ERROR:", err)
-			}
-		} else {
-			log.Fatalln("ERROR: branch '" + brachToRemove + "' is not safe to remove")
 		}
 	}
 }
+
