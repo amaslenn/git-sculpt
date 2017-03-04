@@ -205,7 +205,7 @@ func removeSingleBranch(branch string, base string) (err error) {
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetFlags(log.Lshortfile)
 
 	flag.Parse()
 	var argsTail = flag.Args()
