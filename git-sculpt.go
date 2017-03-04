@@ -219,7 +219,7 @@ func main() {
 		if err != nil {
 			log.Fatalln("ERROR:", err)
 		}
-		os.Exit(0);
+		os.Exit(0)
 	} else if !interactive_mode {
 		fmt.Println("Nothing to do")
 		os.Exit(0)
@@ -254,4 +254,3 @@ func main() {
 		}
 	}
 }
-
