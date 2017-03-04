@@ -5,5 +5,8 @@ go:
     - 1.8
 
 install: make
-script: bash ./tests.sh
+script:
+    - bash ./tests.sh
+    - diff -u <(echo -n) <(gofmt -d -s .)
+    - go tool vet .
 
