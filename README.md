@@ -1,4 +1,4 @@
-[![Travis CI](https://travis-ci.org/amaslenn/git-sculpt.svg)](https://travis-ci.org/amaslenn/git-sculpt/builds)
+[![Travis CI](https://travis-ci.org/amaslenn/git-sculpt.svg)](https://travis-ci.org/amaslenn/git-sculpt/builds) [![Code Climate](https://lima.codeclimate.com/github/amaslenn/git-sculpt/badges/gpa.svg)](https://lima.codeclimate.com/github/amaslenn/git-sculpt) [![Issue Count](https://lima.codeclimate.com/github/amaslenn/git-sculpt/badges/issue_count.svg)](https://lima.codeclimate.com/github/amaslenn/git-sculpt)
 
 # git-sculpt
 Tool for removing merged local branches. Extremely useful in case when changes are incorporated into mainline by `rebase`.
