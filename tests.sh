@@ -63,6 +63,7 @@ else
     echo PASSED
 fi
 
+git branch -D br-new
 echo "t: --all mode"
 git sculpt --all
 num_br=`git branch | wc -l`
