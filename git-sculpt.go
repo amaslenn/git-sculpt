@@ -40,7 +40,7 @@ func getLocalBranches() (branches []string, err error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return branches, err
+		return branches, errors.New("error getting local branches")
 	}
 
 	allBranches := strings.Split(out.String(), "\n")
@@ -118,7 +118,7 @@ func getPatchID(commit string) (patchID string, err error) {
 	err = cmdPatchID.Wait()
 
 	if err != nil {
-		return patchID, err
+		return patchID, errors.New("error calculating patch-id")
 	}
 
 	patchID = strings.Split(out.String(), " ")[0]
@@ -144,7 +144,11 @@ func removeBranch(branch string) (err error) {
 	cmd := exec.Command("git", "branch", "-D", branch)
 
 	err = cmd.Run()
-	return err
+	if err != nil {
+		return errors.New("error deleting branch `" + branch + "'")
+	}
+
+	return nil
 }
 
 func integrated(branch string, baseCommit string) (safeToRemove bool, err error) {
@@ -199,7 +203,7 @@ func removeSingleBranch(branch string, base string) (err error) {
 				return err
 			}
 		} else {
-			return errors.New("ERROR: branch '" + branch + "' is not safe to remove")
+			return errors.New("branch '" + branch + "' is not safe to remove")
 		}
 	}
 

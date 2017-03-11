@@ -6,7 +6,7 @@ cd .tests
 git init
 git config user.name "tester"
 git config user.email "tester@test.test"
-touch > foo
+touch foo
 
 # 1 commit
 git add foo
