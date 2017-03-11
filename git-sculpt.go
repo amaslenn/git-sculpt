@@ -6,7 +6,6 @@ import "os/exec"
 import "bytes"
 import "strings"
 import "errors"
-import "io"
 import "os"
 import "log"
 
@@ -103,27 +102,29 @@ func getCommits(c1 string, c2 string) (commits []string) {
 
 func getPatchID(commit string) (patchID string, err error) {
 	cmdShow := exec.Command("git", "show", commit)
-	cmdPatchID := exec.Command("git", "patch-id", "--stable")
+	stdout, err := cmdShow.StdoutPipe()
+	if err != nil {
+		return patchID, errors.New("error creating pipe from git show")
+	}
 
 	var out bytes.Buffer
-	reader, writer := io.Pipe()
-	cmdShow.Stdout = writer
-	cmdPatchID.Stdin = reader
+	cmdPatchID := exec.Command("git", "patch-id", "--stable")
+	cmdPatchID.Stdin = stdout
 	cmdPatchID.Stdout = &out
+	if err = cmdPatchID.Start(); err != nil {
+		return patchID, errors.New("error starting patch-id")
+	}
+	if err = cmdShow.Run(); err != nil {
+		return patchID, errors.New("error running git show")
+	}
 
-	cmdShow.Start()
-	cmdPatchID.Start()
-	cmdShow.Wait()
-	writer.Close()
-	err = cmdPatchID.Wait()
-
-	if err != nil {
-		return patchID, errors.New("error calculating patch-id")
+	if err = cmdPatchID.Wait(); err != nil {
+		return patchID, errors.New("error waiting git patch-id")
 	}
 
 	patchID = strings.Split(out.String(), " ")[0]
 
-	return patchID, err
+	return patchID, nil
 }
 
 func getPatchIDs(commits []string) (patchID map[string]string, err error) {
