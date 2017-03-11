@@ -67,7 +67,7 @@ git branch -D br-new
 echo "t: --all mode"
 git sculpt --all
 num_br=`git branch | wc -l`
-if [ $num_br -eq 1 ]; then	# master + br-new
+if [ $num_br -eq 1 ]; then	# master only
 	echo PASSED
 else
 	error=$((error+1))
