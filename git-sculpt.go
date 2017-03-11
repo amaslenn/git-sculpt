@@ -12,12 +12,12 @@ import "log"
 
 var baseCommit string
 var remove bool
-var interactive_mode bool
+var interactiveMode bool
 
 func init() {
 	flag.StringVar(&baseCommit, "base", "master", "Base branch or commit")
 	flag.BoolVar(&remove, "d", false, "Remove branch if it is safe")
-	flag.BoolVar(&interactive_mode, "i", false, "Travers all local branch interactively")
+	flag.BoolVar(&interactiveMode, "i", false, "Travers all local branch interactively")
 }
 
 // funtion returns all local branches which do not have upstream
@@ -26,10 +26,10 @@ func getLocalBranches() (branches []string, err error) {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
-	curr_branch := ""
+	currBranch := ""
 	err = cmd.Run()
 	if err == nil {
-		curr_branch = strings.Split(out.String(), "\n")[0]
+		currBranch = strings.Split(out.String(), "\n")[0]
 	}
 
 	// this super easy format was choosen to exclude any unexpected symbols in output
@@ -41,38 +41,38 @@ func getLocalBranches() (branches []string, err error) {
 		return branches, err
 	}
 
-	all_branches := strings.Split(out.String(), "\n")
+	allBranches := strings.Split(out.String(), "\n")
 
-	for i := 0; i < len(all_branches); i++ {
-		if curr_branch == all_branches[i] || 0 == len(all_branches[i]) {
+	for i := 0; i < len(allBranches); i++ {
+		if currBranch == allBranches[i] || 0 == len(allBranches[i]) {
 			continue
 		}
-		cmd = exec.Command("git", "rev-parse", "--symbolic-full-name", all_branches[i]+"@{u}")
-		loc_err := cmd.Run()
-		if loc_err != nil { // means there is no upstream branch
-			branches = append(branches, all_branches[i])
+		cmd = exec.Command("git", "rev-parse", "--symbolic-full-name", allBranches[i]+"@{u}")
+		locErr := cmd.Run()
+		if locErr != nil { // means there is no upstream branch
+			branches = append(branches, allBranches[i])
 		}
 	}
 
 	return branches, err
 }
 
-func getMergeBase(c1 string, c2 string) (merge_base string, err error) {
+func getMergeBase(c1 string, c2 string) (mergeBase string, err error) {
 	cmd := exec.Command("git", "merge-base", c1, c2)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
 	err = cmd.Run()
 	if err != nil {
-		return merge_base, errors.New("error getting merge-base")
+		return mergeBase, errors.New("error getting merge-base")
 	}
 
-	merge_base = strings.Trim(strings.SplitN(out.String(), "\n", 1)[0], " \n")
-	if merge_base == "" {
-		return "", errors.New("Cannot define merge_base")
+	mergeBase = strings.Trim(strings.SplitN(out.String(), "\n", 1)[0], " \n")
+	if mergeBase == "" {
+		return "", errors.New("Cannot define mergeBase")
 	}
 
-	return merge_base, err
+	return mergeBase, err
 }
 
 func getCommits(c1 string, c2 string) (commits []string) {
@@ -99,43 +99,43 @@ func getCommits(c1 string, c2 string) (commits []string) {
 	return commits
 }
 
-func getPatchId(commit string) (patchId string, err error) {
-	cmd_show := exec.Command("git", "show", commit)
-	cmd_patch_id := exec.Command("git", "patch-id", "--stable")
+func getPatchID(commit string) (patchID string, err error) {
+	cmdShow := exec.Command("git", "show", commit)
+	cmdPatchID := exec.Command("git", "patch-id", "--stable")
 
 	var out bytes.Buffer
 	reader, writer := io.Pipe()
-	cmd_show.Stdout = writer
-	cmd_patch_id.Stdin = reader
-	cmd_patch_id.Stdout = &out
+	cmdShow.Stdout = writer
+	cmdPatchID.Stdin = reader
+	cmdPatchID.Stdout = &out
 
-	cmd_show.Start()
-	cmd_patch_id.Start()
-	cmd_show.Wait()
+	cmdShow.Start()
+	cmdPatchID.Start()
+	cmdShow.Wait()
 	writer.Close()
-	err = cmd_patch_id.Wait()
+	err = cmdPatchID.Wait()
 
 	if err != nil {
-		return patchId, err
+		return patchID, err
 	}
 
-	patchId = strings.Split(out.String(), " ")[0]
+	patchID = strings.Split(out.String(), " ")[0]
 
-	return patchId, err
+	return patchID, err
 }
 
-func getPatchIds(commits []string) (patchId map[string]string, err error) {
-	patchId = make(map[string]string, len(commits))
+func getPatchIDs(commits []string) (patchID map[string]string, err error) {
+	patchID = make(map[string]string, len(commits))
 
 	for _, commit := range commits {
-		pId, err := getPatchId(commit)
+		pID, err := getPatchID(commit)
 		if err != nil {
-			return patchId, err
+			return patchID, err
 		}
-		patchId[pId] = commit
+		patchID[pID] = commit
 	}
 
-	return patchId, err
+	return patchID, err
 }
 
 func removeBranch(branch string) (err error) {
@@ -151,11 +151,11 @@ func integrated(branch string, baseCommit string) (safeToRemove bool, err error)
 		return false, err
 	}
 
-	localPatchIds, err := getPatchIds(getCommits(mergeBase, branch))
+	localPatchIDs, err := getPatchIDs(getCommits(mergeBase, branch))
 	if err != nil {
 		return false, err
 	}
-	if len(localPatchIds) == 0 {
+	if len(localPatchIDs) == 0 {
 		return true, nil
 	}
 
@@ -165,12 +165,12 @@ func integrated(branch string, baseCommit string) (safeToRemove bool, err error)
 	// find this way
 	for i := len(commits) - 1; i >= 0; i-- {
 		commit := commits[i]
-		pId, err := getPatchId(commit)
+		pID, err := getPatchID(commit)
 		if err != nil {
 			return false, err
 		}
 
-		if _, ok := localPatchIds[pId]; ok {
+		if _, ok := localPatchIDs[pID]; ok {
 			return true, nil
 		}
 	}
@@ -214,13 +214,13 @@ func main() {
 		branchToRemove = argsTail[0]
 	}
 
-	if !interactive_mode && branchToRemove != "" {
+	if !interactiveMode && branchToRemove != "" {
 		err := removeSingleBranch(branchToRemove, baseCommit)
 		if err != nil {
 			log.Fatalln("ERROR:", err)
 		}
 		os.Exit(0)
-	} else if !interactive_mode {
+	} else if !interactiveMode {
 		fmt.Println("Nothing to do")
 		os.Exit(0)
 	}
@@ -232,7 +232,7 @@ func main() {
 
 	safeToRemove := false
 	for _, b := range localBranches {
-		if interactive_mode {
+		if interactiveMode {
 			safeToRemove, err = integrated(b, baseCommit)
 			if err != nil {
 				log.Fatalln("ERROR:", err)
