@@ -204,6 +204,32 @@ func removeSingleBranch(branch string, base string) (err error) {
 	return nil
 }
 
+func interactiveRemove(localBranches []string, baseCommit string) (err error) {
+	safeToRemove := false
+	for _, b := range localBranches {
+		safeToRemove, err = integrated(b, baseCommit)
+		if err != nil {
+			return err
+		}
+		if safeToRemove {
+			fmt.Print("[" + b + "] is safe to remove. Remove? [Y/n] ")
+			var input string
+			fmt.Scanln(&input)
+			if input == "Y" || input == "y" {
+				err = removeBranch(b)
+				if err != nil {
+					return err
+				}
+				fmt.Println("[" + b + "] removed")
+			}
+		} else {
+			fmt.Println("[" + b + "] is not safe to remove, skip it")
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.Lshortfile)
 
@@ -214,43 +240,24 @@ func main() {
 		branchToRemove = argsTail[0]
 	}
 
-	if !interactiveMode && branchToRemove != "" {
+	if interactiveMode && branchToRemove == "" {
+		localBranches, err := getLocalBranches()
+		if err != nil {
+			log.Fatalln("ERROR:", err)
+		}
+
+		err = interactiveRemove(localBranches, baseCommit)
+		if err != nil {
+			log.Fatalln("ERROR:", err)
+		}
+	} else if branchToRemove != "" {
 		err := removeSingleBranch(branchToRemove, baseCommit)
 		if err != nil {
 			log.Fatalln("ERROR:", err)
 		}
-		os.Exit(0)
 	} else if !interactiveMode {
 		fmt.Println("Nothing to do")
-		os.Exit(0)
 	}
 
-	localBranches, err := getLocalBranches()
-	if err != nil {
-		log.Fatalln("ERROR:", err)
-	}
-
-	safeToRemove := false
-	for _, b := range localBranches {
-		if interactiveMode {
-			safeToRemove, err = integrated(b, baseCommit)
-			if err != nil {
-				log.Fatalln("ERROR:", err)
-			}
-			if safeToRemove {
-				fmt.Print("[" + b + "] is safe to remove. Remove? [Y/n] ")
-				var input string
-				fmt.Scanln(&input)
-				if input == "Y" || input == "y" {
-					err = removeBranch(b)
-					if err != nil {
-						log.Fatalln("ERROR:", err)
-					}
-					fmt.Println("[" + b + "] removed")
-				}
-			} else {
-				fmt.Println("[" + b + "] is not safe to remove, skip it")
-			}
-		}
-	}
+	os.Exit(0)
 }
