@@ -13,11 +13,13 @@ import "log"
 var baseCommit string
 var remove bool
 var interactiveMode bool
+var removeAll bool
 
 func init() {
 	flag.StringVar(&baseCommit, "base", "master", "Base branch or commit")
 	flag.BoolVar(&remove, "d", false, "Remove branch if it is safe")
 	flag.BoolVar(&interactiveMode, "i", false, "Travers all local branch interactively")
+	flag.BoolVar(&removeAll, "all", false, "Remove all branches if it is safe")
 }
 
 // funtion returns all local branches which do not have upstream
@@ -230,6 +232,35 @@ func interactiveRemove(localBranches []string, baseCommit string) (err error) {
 	return nil
 }
 
+func removeAllBranches(localBranches []string, baseCommit string) (err error) {
+	var branchesToRemove []string
+	var branchesToKeep []string
+
+	for _, b := range localBranches {
+		safeToRemove, err := integrated(b, baseCommit)
+		if err != nil {
+			return err
+		}
+		if safeToRemove {
+			branchesToRemove = append(branchesToRemove, b)
+		} else {
+			branchesToKeep = append(branchesToKeep, b)
+		}
+	}
+
+	fmt.Println("Branches to be removed:", strings.Join(branchesToRemove, ", "))
+	fmt.Println("Branches to keep:", strings.Join(branchesToKeep, ", "))
+
+	for _, b := range branchesToRemove {
+		err = removeBranch(b)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.Lshortfile)
 
@@ -240,13 +271,18 @@ func main() {
 		branchToRemove = argsTail[0]
 	}
 
-	if interactiveMode && branchToRemove == "" {
+	if (removeAll || interactiveMode) && branchToRemove == "" {
 		localBranches, err := getLocalBranches()
 		if err != nil {
 			log.Fatalln("ERROR:", err)
 		}
 
-		err = interactiveRemove(localBranches, baseCommit)
+		if removeAll {
+			err = removeAllBranches(localBranches, baseCommit)
+		} else {
+			err = interactiveRemove(localBranches, baseCommit)
+		}
+
 		if err != nil {
 			log.Fatalln("ERROR:", err)
 		}

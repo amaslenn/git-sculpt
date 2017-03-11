@@ -27,6 +27,10 @@ git checkout -b br-new master
 echo bar >> foo
 git commit -am "change foo"
 
+# branches 4 and 5. Safe to remove
+git branch b4 master
+git branch b5 master
+
 ### tests
 PATH=$PATH:../build/amd64/linux/
 git checkout master
@@ -57,6 +61,15 @@ if [ $? -eq 0 ]; then
     error=$((error+1))
 else
     echo PASSED
+fi
+
+echo "t: --all mode"
+git sculpt --all
+num_br=`git branch | wc -l`
+if [ $num_br -eq 2 ]; then	# master + br-new
+	echo PASSED
+else
+	error=$((error+1))
 fi
 
 exit $error
