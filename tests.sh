@@ -32,12 +32,12 @@ git branch b4 master
 git branch b5 master
 
 ### tests
-PATH=$PATH:../build/amd64/linux/
+APP=../build/amd64/linux/git-sculpt
 git checkout master
 
 error=0
 echo "t: empty branch"
-git sculpt -d br-empty
+$APP -d br-empty
 if [ $? -eq 0 ]; then
     echo PASSED
 else
@@ -46,7 +46,7 @@ else
 fi
 
 echo "t: merged branch"
-git sculpt -d br-one-commit
+$APP -d br-one-commit
 if [ $? -eq 0 ]; then
     echo PASSED
 else
@@ -55,7 +55,7 @@ else
 fi
 
 echo "t: branch with changes"
-git sculpt -d br-new
+$APP -d br-new
 if [ $? -eq 0 ]; then
     echo FAILED
     error=$((error+1))
@@ -65,11 +65,12 @@ fi
 
 git branch -D br-new
 echo "t: --all mode"
-git sculpt --all
+$APP --all
 num_br=`git branch | wc -l`
-if [ $num_br -eq 1 ]; then	# master only
+if [ $num_br -eq 1 ]; then
 	echo PASSED
 else
+	echo FAILED
 	error=$((error+1))
 fi
 
