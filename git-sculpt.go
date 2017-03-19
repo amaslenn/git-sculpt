@@ -6,7 +6,6 @@ import "os/exec"
 import "bytes"
 import "strings"
 import "errors"
-import "os"
 import "log"
 
 var baseCommit string
@@ -198,47 +197,18 @@ func askYesNo(text string) (yes bool) {
 	return yes
 }
 
-func removeSingleBranch(branch string, base string) (err error) {
-	safeToRemove, err := integrated(branch, base)
-	if err != nil {
-		return err
-	}
-
-	var text string
-	if safeToRemove {
-		text = "[" + branch + "] is safe to remove."
-	} else {
-		text = "[" + branch + "] is not in base."
-	}
-
-	yes := true
-	if interactiveMode {
-		yes = askYesNo(text + " Remove? [Y/n] ")
-	}
-
-	if yes {
-		if safeToRemove {
-			err = removeBranch(branch)
-			if err != nil {
-				return err
-			}
-		} else {
-			return errors.New("branch '" + branch + "' is not safe to remove")
-		}
-	}
-
-	return nil
-}
-
-func interactiveRemove(localBranches []string, baseCommit string) (err error) {
+func singleRemove(localBranches []string, baseCommit string) (err error) {
 	safeToRemove := false
+	yes := true
 	for _, b := range localBranches {
 		safeToRemove, err = integrated(b, baseCommit)
 		if err != nil {
 			return err
 		}
 		if safeToRemove {
-			yes := askYesNo("[" + b + "] is safe to remove. Remove? [Y/n] ")
+			if interactiveMode {
+				yes = askYesNo("[" + b + "] is safe to remove. Remove? [Y/n] ")
+			}
 			if yes {
 				err = removeBranch(b)
 				if err != nil {
@@ -300,29 +270,28 @@ func main() {
 		branchToRemove = argsTail[0]
 	}
 
-	if (removeAll || interactiveMode) && branchToRemove == "" {
-		localBranches, err := getLocalBranches()
+	var localBranches []string
+	var err error
+	if removeAll || interactiveMode {
+		localBranches, err = getLocalBranches()
 		if err != nil {
 			log.Fatalln("ERROR:", err)
 		}
-
-		if removeAll {
-			err = removeAllBranches(localBranches, baseCommit)
-		} else {
-			err = interactiveRemove(localBranches, baseCommit)
-		}
-
-		if err != nil {
-			log.Fatalln("ERROR:", err)
-		}
-	} else if branchToRemove != "" {
-		err := removeSingleBranch(branchToRemove, baseCommit)
-		if err != nil {
-			log.Fatalln("ERROR:", err)
-		}
-	} else if !interactiveMode {
-		fmt.Println("Nothing to do")
 	}
 
-	os.Exit(0)
+	if removeAll {
+		err = removeAllBranches(localBranches, baseCommit)
+		if err != nil {
+			log.Fatalln("ERROR:", err)
+		}
+	} else {
+		if branchToRemove != "" {
+			localBranches = localBranches[:0]
+			localBranches = append(localBranches, branchToRemove)
+		}
+		err = singleRemove(localBranches, baseCommit)
+		if err != nil {
+			log.Fatalln("ERROR:", err)
+		}
+	}
 }

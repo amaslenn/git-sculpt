@@ -56,11 +56,16 @@ fi
 
 echo "t: branch with changes"
 $APP br-new
-if [ $? -eq 0 ]; then
+if [ $? -ne 0 ]; then
     echo FAILED
     error=$((error+1))
 else
-    echo PASSED
+	git checkout br-new && git checkout master
+	if [ $? -eq 0 ]; then
+    	echo PASSED
+	else
+		error=$((error+1))
+	fi
 fi
 
 git branch -D br-new
