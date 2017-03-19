@@ -10,13 +10,11 @@ import "os"
 import "log"
 
 var baseCommit string
-var remove bool
 var interactiveMode bool
 var removeAll bool
 
 func init() {
 	flag.StringVar(&baseCommit, "base", "master", "Base branch or commit")
-	flag.BoolVar(&remove, "d", false, "Remove branch if it is safe")
 	flag.BoolVar(&interactiveMode, "i", false, "Travers all local branch interactively")
 	flag.BoolVar(&removeAll, "all", false, "Remove all branches if it is safe")
 }
@@ -206,13 +204,19 @@ func removeSingleBranch(branch string, base string) (err error) {
 		return err
 	}
 
+	var text string
 	if safeToRemove {
-		fmt.Println("[" + branch + "] is safe to remove")
+		text = "[" + branch + "] is safe to remove."
 	} else {
-		fmt.Println("[" + branch + "] is not in base")
+		text = "[" + branch + "] is not in base."
 	}
 
-	if remove {
+	yes := true
+	if interactiveMode {
+		yes = askYesNo(text + " Remove? [Y/n] ")
+	}
+
+	if yes {
 		if safeToRemove {
 			err = removeBranch(branch)
 			if err != nil {

@@ -37,7 +37,7 @@ git checkout master
 
 error=0
 echo "t: empty branch"
-$APP -d br-empty
+$APP br-empty
 if [ $? -eq 0 ]; then
     echo PASSED
 else
@@ -46,7 +46,7 @@ else
 fi
 
 echo "t: merged branch"
-$APP -d br-one-commit
+$APP br-one-commit
 if [ $? -eq 0 ]; then
     echo PASSED
 else
@@ -55,7 +55,7 @@ else
 fi
 
 echo "t: branch with changes"
-$APP -d br-new
+$APP br-new
 if [ $? -eq 0 ]; then
     echo FAILED
     error=$((error+1))
