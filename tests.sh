@@ -64,6 +64,7 @@ else
 	if [ $? -eq 0 ]; then
     	echo PASSED
 	else
+		echo FAILED
 		error=$((error+1))
 	fi
 fi

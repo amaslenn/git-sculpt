@@ -116,6 +116,7 @@ func getPatchID(commit string) (patchID string, err error) {
 	}
 
 	if err = cmdPatchID.Wait(); err != nil {
+		fmt.Println("ERROR:", err)
 		return patchID, errors.New("error waiting git patch-id")
 	}
 
