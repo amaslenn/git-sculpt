@@ -273,10 +273,17 @@ func removeAllBranches(localBranches []string, baseCommit string) (err error) {
 	fmt.Println("Branches to be removed:", strings.Join(branchesToRemove, ", "))
 	fmt.Println("Branches to keep:", strings.Join(branchesToKeep, ", "))
 
-	for _, b := range branchesToRemove {
-		err = removeBranch(b)
-		if err != nil {
-			return err
+	yes := true
+	if interactiveMode {
+		yes = askYesNo("Perform operation? [Y/n] ")
+	}
+
+	if yes {
+		for _, b := range branchesToRemove {
+			err = removeBranch(b)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
