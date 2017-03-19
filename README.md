@@ -3,20 +3,26 @@
 # git-sculpt
 Tool for removing merged local branches. Extremely useful in case when changes are incorporated into mainline by `rebase`.
 
+**Tool removes branch only if it thinks it is safe.**
+
+## Quick installation
+Go to the [latest release](https://github.com/amaslenn/git-sculpt/releases/latest) to download binaries.
+
 ## Examples
-Check if branch `feature1` in **master**:  
+Remove single branch `feature1`:
 ```sh
 git sculpt feature1
 ```
 
-Check if branch `feature2` in **develop**:
+Remove branch `feature2` using **develop** as base:
 ```sh
 git sculpt --base develop feature2
 ```
 
-Check if branch `feature3` in **master** and delete if it is safe:  
+Remove all local branches (keeps all not safe for removal):
 ```sh
-git sculpt -d feature3
+git sculpt --all
+git sculpt --all -i		# will ask confirmation for removal
 ```
 
 ## Build
@@ -24,9 +30,6 @@ The following command will trigger cross platform build for `amd64` for macOS, L
 ```sh
 make
 ```
-
-## Install
-Simply copy pre-build versions (or compile by yourself) to your `$PATH`. `git` will automatically use it for `git sculpt`.
 
 # How it works
 Similar to what real `rebase` does: search for **merge base**, then calculate `patch-id` for all commits in _local_ branch and try to find all of them in the _base_ branch (`master` by default).
