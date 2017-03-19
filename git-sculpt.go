@@ -185,6 +185,21 @@ func integrated(branch string, baseCommit string) (safeToRemove bool, err error)
 	return false, nil
 }
 
+func askYesNo(text string) (yes bool) {
+	if text != "" {
+		fmt.Print(text)
+	}
+	var input string
+	fmt.Scanln(&input)
+	if input == "Y" || input == "y" {
+		yes = true
+	} else {
+		yes = false
+	}
+
+	return yes
+}
+
 func removeSingleBranch(branch string, base string) (err error) {
 	safeToRemove, err := integrated(branch, base)
 	if err != nil {
@@ -219,10 +234,8 @@ func interactiveRemove(localBranches []string, baseCommit string) (err error) {
 			return err
 		}
 		if safeToRemove {
-			fmt.Print("[" + b + "] is safe to remove. Remove? [Y/n] ")
-			var input string
-			fmt.Scanln(&input)
-			if input == "Y" || input == "y" {
+			yes := askYesNo("[" + b + "] is safe to remove. Remove? [Y/n] ")
+			if yes {
 				err = removeBranch(b)
 				if err != nil {
 					return err
